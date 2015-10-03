@@ -38,17 +38,33 @@ namespace pmx
 	}
 
 	/// インデックス値を書き込む
-	void WriteIndex(std::ostream* stream, int index)
+	void WriteIndex(std::ostream* stream, int index, int size)
 	{
-		if (index <= 255)
+		if (size == 1)
 		{
-			stream->write((char*)&index, sizeof(uint8_t));
+			if (index < 0) 
+			{
+				uint8_t value = 0xFF;
+				stream->write((char*)&value, sizeof(uint8_t));
+			}
+			else
+			{
+				stream->write((char*)&index, sizeof(uint8_t));
+			}
 		}
-		else if (index < 65535)
+		else if (size == 2)
 		{
-			stream->write((char*)&index, sizeof(uint16_t));
+			if (index < 0)
+			{
+				uint16_t value = 0xFFFF;
+				stream->write((char*)&value, sizeof(uint16_t));
+			}
+			else
+			{
+				stream->write((char*)&index, sizeof(uint16_t));
+			}
 		}
-		else
+		else if (size == 4)
 		{
 			stream->write((char*)&index, sizeof(uint32_t));
 		}
@@ -116,7 +132,7 @@ namespace pmx
 
 	void PmxSetting::Write(std::ostream *stream)
 	{
-		uint8_t count = 0;
+		uint8_t count = 8;
 		stream->write((char*)&count, sizeof(uint8_t));
 		stream->write((char*)&encoding, sizeof(uint8_t));
 		stream->write((char*)&uv, sizeof(uint8_t));
@@ -135,7 +151,7 @@ namespace pmx
 
 	void PmxVertexSkinningBDEF1::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index);
+		WriteIndex(stream, this->bone_index, setting->bone_index_size);
 	}
 
 	void PmxVertexSkinningBDEF2::Read(std::istream *stream, PmxSetting *setting)
@@ -147,8 +163,8 @@ namespace pmx
 
 	void PmxVertexSkinningBDEF2::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index1);
-		WriteIndex(stream, this->bone_index2);
+		WriteIndex(stream, this->bone_index1, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index2, setting->bone_index_size);
 		stream->write((char*)&this->bone_weight, sizeof(float));
 	}
 
@@ -166,10 +182,10 @@ namespace pmx
 
 	void PmxVertexSkinningBDEF4::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index1);
-		WriteIndex(stream, this->bone_index2);
-		WriteIndex(stream, this->bone_index3);
-		WriteIndex(stream, this->bone_index4);
+		WriteIndex(stream, this->bone_index1, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index2, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index3, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index4, setting->bone_index_size);
 		stream->write((char*)&this->bone_weight1, sizeof(float));
 		stream->write((char*)&this->bone_weight2, sizeof(float));
 		stream->write((char*)&this->bone_weight3, sizeof(float));
@@ -188,8 +204,8 @@ namespace pmx
 
 	void PmxVertexSkinningSDEF::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index1);
-		WriteIndex(stream, this->bone_index2);
+		WriteIndex(stream, this->bone_index1, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index2, setting->bone_index_size);
 		stream->write((char*)&this->bone_weight, sizeof(float));
 		stream->write((char*) this->sdef_c, sizeof(float) * 3);
 		stream->write((char*) this->sdef_r0, sizeof(float) * 3);
@@ -210,10 +226,10 @@ namespace pmx
 
 	void PmxVertexSkinningQDEF::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index1);
-		WriteIndex(stream, this->bone_index2);
-		WriteIndex(stream, this->bone_index3);
-		WriteIndex(stream, this->bone_index4);
+		WriteIndex(stream, this->bone_index1, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index2, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index3, setting->bone_index_size);
+		WriteIndex(stream, this->bone_index4, setting->bone_index_size);
 		stream->write((char*)&this->bone_weight1, sizeof(float));
 		stream->write((char*)&this->bone_weight2, sizeof(float));
 		stream->write((char*)&this->bone_weight3, sizeof(float));
@@ -263,7 +279,7 @@ namespace pmx
 		{
 			stream->write((char*) this->uva[i], sizeof(float) * 4);
 		}
-		stream->write((char*)&this->skinning_type, sizeof(PmxVertexSkinningType));
+		stream->write((char*)&this->skinning_type, sizeof(uint8_t));
 		this->skinning->Write(stream, setting);
 		stream->write((char*)&this->edge, sizeof(float));
 	}
@@ -305,8 +321,8 @@ namespace pmx
 		stream->write((char*)&this->flag, sizeof(uint8_t));
 		stream->write((char*) this->edge_color, sizeof(float) * 4);
 		stream->write((char*)&this->edge_size, sizeof(float));
-		WriteIndex(stream, this->diffuse_texture_index);
-		WriteIndex(stream, this->sphere_texture_index);
+		WriteIndex(stream, this->diffuse_texture_index, setting->texture_index_size);
+		WriteIndex(stream, this->sphere_texture_index, setting->texture_index_size);
 		stream->write((char*)&this->sphere_op_mode, sizeof(uint8_t));
 		stream->write((char*)&this->common_toon_flag, sizeof(uint8_t));
 		if (this->common_toon_flag)
@@ -314,7 +330,7 @@ namespace pmx
 			stream->write((char*)&this->toon_texture_index, sizeof(uint8_t));
 		}
 		else {
-			WriteIndex(stream, this->toon_texture_index);
+			WriteIndex(stream, this->toon_texture_index, setting->texture_index_size);
 		}
 		WriteString(stream, this->memo);
 		stream->write((char*)&this->index_count, sizeof(int));
@@ -333,7 +349,7 @@ namespace pmx
 
 	void PmxIkLink::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->link_target);
+		WriteIndex(stream, this->link_target, setting->bone_index_size);
 		stream->write((char*)&this->angle_lock, sizeof(uint8_t));
 		if (this->angle_lock == 1)
 		{
@@ -387,17 +403,17 @@ namespace pmx
 		WriteString(stream, this->bone_name);
 		WriteString(stream, this->bone_english_name);
 		stream->write((char*) this->position, sizeof(float) * 3);
-		WriteIndex(stream, this->parent_index);
+		WriteIndex(stream, this->parent_index, setting->bone_index_size);
 		stream->write((char*)&this->level, sizeof(int));
 		stream->write((char*)&this->bone_flag, sizeof(uint16_t));
 		if (this->bone_flag & 0x0001) {
-			WriteIndex(stream, this->target_index);
+			WriteIndex(stream, this->target_index, setting->bone_index_size);
 		}
 		else {
 			stream->write((char*)this->offset, sizeof(float) * 3);
 		}
 		if (this->bone_flag & (0x0100 | 0x0200)) {
-			WriteIndex(stream, this->grant_parent_index);
+			WriteIndex(stream, this->grant_parent_index, setting->bone_index_size);
 			stream->write((char*)&this->grant_weight, sizeof(float));
 		}
 		if (this->bone_flag & 0x0400) {
@@ -411,7 +427,7 @@ namespace pmx
 			stream->write((char*)this->key, sizeof(int));
 		}
 		if (this->bone_flag & 0x0020) {
-			WriteIndex(stream, this->ik_target_bone_index);
+			WriteIndex(stream, this->ik_target_bone_index, setting->bone_index_size);
 			stream->write((char*)&ik_loop, sizeof(int));
 			stream->write((char*)&ik_loop_angle_limit, sizeof(float));
 			stream->write((char*)&ik_link_count, sizeof(int));
@@ -429,7 +445,7 @@ namespace pmx
 
 	void PmxMorphVertexOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->vertex_index);
+		WriteIndex(stream, this->vertex_index, setting->vertex_index_size);
 		stream->write((char*)this->position_offset, sizeof(float) * 3);
 	}
 
@@ -441,7 +457,7 @@ namespace pmx
 
 	void PmxMorphUVOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->vertex_index);
+		WriteIndex(stream, this->vertex_index, setting->vertex_index_size);
 		stream->write((char*)this->uv_offset, sizeof(float) * 4);
 	}
 
@@ -454,7 +470,7 @@ namespace pmx
 
 	void PmxMorphBoneOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->bone_index);
+		WriteIndex(stream, this->bone_index, setting->bone_index_size);
 		stream->write((char*)this->translation, sizeof(float) * 3);
 		stream->write((char*)this->rotation, sizeof(float) * 4);
 	}
@@ -476,7 +492,7 @@ namespace pmx
 
 	void PmxMorphMaterialOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->material_index);
+		WriteIndex(stream, this->material_index, setting->material_index_size);
 		stream->write((char*)&this->offset_operation, sizeof(uint8_t));
 		stream->write((char*)this->diffuse, sizeof(float) * 4);
 		stream->write((char*)this->specular, sizeof(float) * 3);
@@ -497,7 +513,7 @@ namespace pmx
 
 	void PmxMorphGroupOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->morph_index);
+		WriteIndex(stream, this->morph_index, setting->morph_index_size);
 		stream->write((char*)&this->morph_weight, sizeof(float));
 	}
 
@@ -509,7 +525,7 @@ namespace pmx
 
 	void PmxMorphFlipOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->morph_index);
+		WriteIndex(stream, this->morph_index, setting->morph_index_size);
 		stream->write((char*)&this->morph_value, sizeof(float));
 	}
 
@@ -523,7 +539,7 @@ namespace pmx
 
 	void PmxMorphImplusOffset::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->rigid_body_index);
+		WriteIndex(stream, this->rigid_body_index, setting->rigidbody_index_size);
 		stream->write((char*)&this->is_local, sizeof(uint8_t));
 		stream->write((char*)this->velocity, sizeof(float) * 3);
 		stream->write((char*)this->angular_torque, sizeof(float) * 3);
@@ -647,10 +663,10 @@ namespace pmx
 		stream->write((char*)&this->element_target, sizeof(uint8_t));
 		if (this->element_target == 0x00)
 		{
-			WriteIndex(stream, this->index);
+			WriteIndex(stream, this->index, setting->bone_index_size);
 		}
 		else {
-			WriteIndex(stream, this->index);
+			WriteIndex(stream, this->index, setting->morph_index_size);
 		}
 	}
 
@@ -702,7 +718,7 @@ namespace pmx
 	{
 		WriteString(stream, this->girid_body_name);
 		WriteString(stream, this->girid_body_english_name);
-		WriteIndex(stream, this->target_bone);
+		WriteIndex(stream, this->target_bone, setting->bone_index_size);
 		stream->write((char*)&this->group, sizeof(uint8_t));
 		stream->write((char*)&this->mask, sizeof(uint16_t));
 		stream->write((char*)&this->shape, sizeof(uint8_t));
@@ -733,8 +749,8 @@ namespace pmx
 
 	void PmxJointParam::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->rigid_body1);
-		WriteIndex(stream, this->rigid_body2);
+		WriteIndex(stream, this->rigid_body1, setting->rigidbody_index_size);
+		WriteIndex(stream, this->rigid_body2, setting->rigidbody_index_size);
 		stream->write((char*) this->position, sizeof(float) * 3);
 		stream->write((char*) this->orientaiton, sizeof(float) * 3);
 		stream->write((char*) this->move_limitation_min, sizeof(float) * 3);
@@ -770,8 +786,8 @@ namespace pmx
 
 	void PmxAncherRigidBody::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteIndex(stream, this->related_rigid_body);
-		WriteIndex(stream, this->related_vertex);
+		WriteIndex(stream, this->related_rigid_body, setting->rigidbody_index_size);
+		WriteIndex(stream, this->related_vertex, setting->vertex_index_size);
 		stream->write((char*)&this->is_near, sizeof(uint8_t));
 	}
 
@@ -959,7 +975,7 @@ namespace pmx
 		stream->write((char*)&index_count, sizeof(int));
 		for (int i = 0; i < index_count; i++)
 		{
-			WriteIndex(stream, this->indices[i]);
+			WriteIndex(stream, this->indices[i], setting.vertex_index_size);
 		}
 
 		// テクスチャ
