@@ -249,19 +249,19 @@ namespace pmx
 		switch (this->skinning_type)
 		{
 		case PmxVertexSkinningType::BDEF1:
-			this->skinning = std::make_unique<PmxVertexSkinningBDEF1>();
+			this->skinning = std::make_shared<PmxVertexSkinningBDEF1>();
 			break;
 		case PmxVertexSkinningType::BDEF2:
-			this->skinning = std::make_unique<PmxVertexSkinningBDEF2>();
+			this->skinning = std::make_shared<PmxVertexSkinningBDEF2>();
 			break;
 		case PmxVertexSkinningType::BDEF4:
-			this->skinning = std::make_unique<PmxVertexSkinningBDEF4>();
+			this->skinning = std::make_shared<PmxVertexSkinningBDEF4>();
 			break;
 		case PmxVertexSkinningType::SDEF:
-			this->skinning = std::make_unique<PmxVertexSkinningSDEF>();
+			this->skinning = std::make_shared<PmxVertexSkinningSDEF>();
 			break;
 		case PmxVertexSkinningType::QDEF:
-			this->skinning = std::make_unique<PmxVertexSkinningQDEF>();
+			this->skinning = std::make_shared<PmxVertexSkinningQDEF>();
 			break;
 		default:
 			throw "invalid skinning type";
@@ -391,7 +391,7 @@ namespace pmx
 			stream->read((char*) &ik_loop, sizeof(int));
 			stream->read((char*) &ik_loop_angle_limit, sizeof(float));
 			stream->read((char*) &ik_link_count, sizeof(int));
-			this->ik_links = std::make_unique<PmxIkLink []>(ik_link_count);
+			this->ik_links.resize(ik_link_count);
 			for (int i = 0; i < ik_link_count; i++) {
 				ik_links[i].Read(stream, setting);
 			}
@@ -555,28 +555,28 @@ namespace pmx
 		switch (this->morph_type)
 		{
 		case MorphType::Group:
-			group_offsets = std::make_unique<PmxMorphGroupOffset []>(this->offset_count);
+			group_offsets.resize(this->offset_count);
 			for (int i = 0; i < offset_count; i++)
 			{
 				group_offsets[i].Read(stream, setting);
 			}
 			break;
 		case MorphType::Vertex:
-			vertex_offsets = std::make_unique<PmxMorphVertexOffset []>(this->offset_count);
+			vertex_offsets.resize(this->offset_count);
 			for (int i = 0; i < offset_count; i++)
 			{
 				vertex_offsets[i].Read(stream, setting);
 			}
 			break;
 		case MorphType::Bone:
-			bone_offsets = std::make_unique<PmxMorphBoneOffset []>(this->offset_count);
+			bone_offsets.resize(this->offset_count);
 			for (int i = 0; i < offset_count; i++)
 			{
 				bone_offsets[i].Read(stream, setting);
 			}
 			break;
 		case MorphType::Matrial:
-			material_offsets = std::make_unique<PmxMorphMaterialOffset []>(this->offset_count);
+			material_offsets.resize(this->offset_count);
 			for (int i = 0; i < offset_count; i++)
 			{
 				material_offsets[i].Read(stream, setting);
@@ -587,7 +587,7 @@ namespace pmx
 		case MorphType::AdditionalUV2:
 		case MorphType::AdditionalUV3:
 		case MorphType::AdditionalUV4:
-			uv_offsets = std::make_unique<PmxMorphUVOffset []>(this->offset_count);
+			uv_offsets.resize(this->offset_count);
 			for (int i = 0; i < offset_count; i++)
 			{
 				uv_offsets[i].Read(stream, setting);
@@ -676,7 +676,7 @@ namespace pmx
 		this->frame_english_name = ReadString(stream, setting->encoding);
 		stream->read((char*) &this->frame_flag, sizeof(uint8_t));
 		stream->read((char*) &this->element_count, sizeof(int));
-		this->elements = std::make_unique<PmxFrameElement []>(this->element_count);
+		this->elements.resize(this->element_count);
 		for (int i = 0; i < this->element_count; i++)
 		{
 			this->elements[i].Read(stream, setting);
@@ -813,25 +813,25 @@ namespace pmx
 		this->model_comment.clear();
 		this->model_english_commnet.clear();
 		this->vertex_count = 0;
-		this->vertices = nullptr;
+		this->vertices.clear();
 		this->index_count = 0;
-		this->indices = nullptr;
+		this->indices.clear();
 		this->texture_count = 0;
-		this->textures = nullptr;
+		this->textures.clear();
 		this->material_count = 0;
-		this->materials = nullptr;
+		this->materials.clear();
 		this->bone_count = 0;
-		this->bones = nullptr;
+		this->bones.clear();
 		this->morph_count = 0;
-		this->morphs = nullptr;
+		this->morphs.clear();
 		this->frame_count = 0;
-		this->frames = nullptr;
+		this->frames.clear();
 		this->rigid_body_count = 0;
-		this->rigid_bodies = nullptr;
+		this->rigid_bodies.clear();
 		this->joint_count = 0;
-		this->joints = nullptr;
+		this->joints.clear();
 		this->soft_body_count = 0;
-		this->soft_bodies = nullptr;
+		this->soft_bodies.clear();
 	}
 
 	void PmxModel::Read(std::istream *stream)
@@ -862,7 +862,7 @@ namespace pmx
 
 		// 頂点
 		stream->read((char*) &vertex_count, sizeof(int));
-		this->vertices = std::make_unique<PmxVertex []>(vertex_count);
+		this->vertices.resize(vertex_count);
 		for (int i = 0; i < vertex_count; i++)
 		{
 			vertices[i].Read(stream, &setting);
@@ -870,7 +870,7 @@ namespace pmx
 
 		// 面
 		stream->read((char*) &index_count, sizeof(int));
-		this->indices = std::make_unique<int []>(index_count);
+		this->indices.resize(index_count);
 		for (int i = 0; i < index_count; i++)
 		{
 			this->indices[i] = ReadIndex(stream, setting.vertex_index_size);
@@ -878,7 +878,7 @@ namespace pmx
 
 		// テクスチャ
 		stream->read((char*) &texture_count, sizeof(int));
-		this->textures = std::make_unique<std::wstring []>(texture_count);
+		this->textures.resize(texture_count);
 		for (int i = 0; i < texture_count; i++)
 		{
 			this->textures[i] = ReadString(stream, setting.encoding);
@@ -886,7 +886,7 @@ namespace pmx
 
 		// マテリアル
 		stream->read((char*) &material_count, sizeof(int));
-		this->materials = std::make_unique<PmxMaterial []>(material_count);
+		this->materials.resize(material_count);
 		for (int i = 0; i < material_count; i++)
 		{
 			this->materials[i].Read(stream, &setting);
@@ -894,7 +894,7 @@ namespace pmx
 
 		// ボーン
 		stream->read((char*) &this->bone_count, sizeof(int));
-		this->bones = std::make_unique<PmxBone []>(this->bone_count);
+		this->bones.resize(this->bone_count);
 		for (int i = 0; i < this->bone_count; i++)
 		{
 			this->bones[i].Read(stream, &setting);
@@ -902,7 +902,7 @@ namespace pmx
 
 		// モーフ
 		stream->read((char*) &this->morph_count, sizeof(int));
-		this->morphs = std::make_unique<PmxMorph []>(this->morph_count);
+		this->morphs.resize(this->morph_count);
 		for (int i = 0; i < this->morph_count; i++)
 		{
 			this->morphs[i].Read(stream, &setting);
@@ -910,7 +910,7 @@ namespace pmx
 
 		// 表示枠
 		stream->read((char*) &this->frame_count, sizeof(int));
-		this->frames = std::make_unique<PmxFrame []>(this->frame_count);
+		this->frames.resize(this->frame_count);
 		for (int i = 0; i < this->frame_count; i++)
 		{
 			this->frames[i].Read(stream, &setting);
@@ -918,7 +918,7 @@ namespace pmx
 
 		// 剛体
 		stream->read((char*) &this->rigid_body_count, sizeof(int));
-		this->rigid_bodies = std::make_unique<PmxRigidBody []>(this->rigid_body_count);
+		this->rigid_bodies.resize(this->rigid_body_count);
 		for (int i = 0; i < this->rigid_body_count; i++)
 		{
 			this->rigid_bodies[i].Read(stream, &setting);
@@ -926,7 +926,7 @@ namespace pmx
 
 		// ジョイント
 		stream->read((char*) &this->joint_count, sizeof(int));
-		this->joints = std::make_unique<PmxJoint []>(this->joint_count);
+		this->joints.resize(this->joint_count);
 		for (int i = 0; i < this->joint_count; i++)
 		{
 			this->joints[i].Read(stream, &setting);
