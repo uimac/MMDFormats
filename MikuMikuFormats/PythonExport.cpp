@@ -12,6 +12,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/format.hpp>
 
+#include <typeinfo>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -24,13 +25,369 @@
 #include "Vmd.h"
 #include "Pmx.h"
 
+// wrap-code from: http://stackoverflow.com/questions/18882089/wrapping-arrays-in-boost-python
+namespace boost {
+	namespace python {
+		namespace detail {
+
+			template <typename> struct array_trait;
+
+			/// @brief Type that proxies to an array.
+			template <typename T>
+			class array_proxy
+			{
+			public:
+				// Types
+				typedef T           value_type;
+				typedef T*          iterator;
+				typedef T&          reference;
+				typedef std::size_t size_type;
+
+				/// @brief Empty constructor.
+				array_proxy()
+					: ptr_(0),
+					length_(0)
+				{}
+
+				/// @brief Construct with iterators.
+				template <typename Iterator>
+				array_proxy(Iterator begin, Iterator end)
+					: ptr_(&*begin),
+					length_(std::distance(begin, end))
+				{}
+
+				/// @brief Construct with with start and size.
+				array_proxy(reference begin, std::size_t length)
+					: ptr_(&begin),
+					length_(length)
+				{}
+
+				// Iterator support.
+				iterator begin()               { return ptr_; }
+				iterator end()                 { return ptr_ + length_; }
+
+				// Element access.
+				reference operator[](size_t i) { return ptr_[i]; }
+
+				// Capacity.
+				size_type size()               { return length_; }
+
+			private:
+				T* ptr_;
+				std::size_t length_;
+			};
+
+			/// @brief Make an array_proxy.
+			template <typename T>
+			array_proxy<typename array_trait<T>::element_type>
+				make_array_proxy(T& array)
+			{
+				return array_proxy<typename array_trait<T>::element_type>(
+					array[0],
+					array_trait<T>::static_size);
+			}
+
+			/// @brief Policy type for referenced indexing, meeting the DerivedPolicies
+			///        requirement of boost::python::index_suite.
+			/// 
+			/// @note Requires Container to support:
+			///          - value_type and size_type types,
+			///          - value_type is default constructable and copyable,
+			///          - element access via operator[],
+			///          - Default constructable, iterator constructable,
+			///          - begin(), end(), and size() member functions
+			template <typename Container>
+			class ref_index_suite
+				: public indexing_suite < Container, ref_index_suite<Container> >
+			{
+			public:
+
+				typedef typename Container::value_type data_type;
+				typedef typename Container::size_type  index_type;
+				typedef typename Container::size_type  size_type;
+
+				// Element access and manipulation.
+
+				/// @brief Get element from container.
+				static data_type&
+					get_item(Container& container, index_type index)
+				{
+					return container[index];
+				}
+
+				/// @brief Set element from container.
+				static void
+					set_item(Container& container, index_type index, const data_type& value)
+				{
+					container[index] = value;
+				}
+
+				/// @brief Reset index to default value.
+				static void
+					delete_item(Container& container, index_type index)
+				{
+					set_item(container, index, data_type());
+				};
+
+				// Slice support.
+
+				/// @brief Get slice from container.
+				///
+				/// @return Python object containing
+				static object
+					get_slice(Container& container, index_type from, index_type to)
+				{
+					if (from > to) return list();
+
+					// Return copy, as container only references its elements.
+					list list;
+					while (from != to) list.append(container[from++]);
+					return list;
+				};
+
+				/// @brief Set a slice in container with a given value.
+				static void
+					set_slice(
+					Container& container, index_type from,
+					index_type to, const data_type& value
+					)
+				{
+					// If range is invalid, return early.
+					if (from > to) return;
+
+					// Populate range with value.
+					while (from < to) container[from++] = value;
+				}
+
+				/// @brief Set a slice in container with another range.
+				template <class Iterator>
+				static void
+					set_slice(
+					Container& container, index_type from,
+					index_type to, Iterator first, Iterator last
+					)
+				{
+					// If range is invalid, return early.
+					if (from > to) return;
+
+					// Populate range with other range.
+					while (from < to) container[from++] = *first++;
+				}
+
+				/// @brief Reset slice to default values.
+				static void
+					delete_slice(Container& container, index_type from, index_type to)
+				{
+					set_slice(container, from, to, data_type());
+				}
+
+				// Capacity.
+
+				/// @brief Get size of container.
+				static std::size_t size(Container& container) { return container.size(); }
+
+				/// @brief Check if a value is within the container.
+				template <class T>
+				static bool
+					contains(Container& container, const T& value)
+				{
+					return std::find(container.begin(), container.end(), value)
+						!= container.end();
+				}
+
+				/// @brief Minimum index supported for container.
+				static index_type
+					get_min_index(Container& /*container*/)
+				{
+					return 0;
+				}
+
+				/// @brief Maximum index supported for container.
+				static index_type get_max_index(Container& container)
+				{
+					return size(container);
+				}
+
+				// Misc.
+
+				/// @brief Convert python index (could be negative) to a valid container
+				///        index with proper boundary checks.
+				static index_type convert_index(Container& container, PyObject* object)
+				{
+					extract<index_type> py_index(object);
+
+					// If py_index cannot extract a long, then type the type is wrong so
+					// set error and return early.
+					if (!py_index.check())
+					{
+						PyErr_SetString(PyExc_TypeError, "Invalid index type");
+						throw_error_already_set();
+						return index_type();
+					}
+
+					// Extract index.
+					index_type index = static_cast<index_type>(py_index());
+
+					// Adjust negative index.
+					if (index < 0)
+						index += static_cast<index_type>(container.size());
+
+					// Boundary check.
+					if (index >= static_cast<index_type>(container.size()) || index < 0)
+					{
+						PyErr_SetString(PyExc_IndexError, "Index out of range");
+						throw_error_already_set();
+					}
+
+					return index;
+				}
+			};
+
+			/// @brief Trait for arrays.
+			template <typename T>
+			struct array_trait_impl;
+
+			// Specialize for native array.
+			template <typename T, std::size_t N>
+			struct array_trait_impl < T[N] >
+			{
+				typedef T element_type;
+				enum { static_size = N };
+				typedef array_proxy<element_type> proxy_type;
+				typedef default_call_policies policy;
+				typedef boost::mpl::vector<array_proxy<element_type> > signature;
+			};
+
+			// Specialize boost::array to use the native array trait.
+			template <typename T, std::size_t N>
+			struct array_trait_impl<boost::array<T, N> >
+				: public array_trait_impl < T[N] >
+			{};
+
+			// @brief Specialize for member objects to use and modify non member traits.
+			template <typename T, typename C>
+			struct array_trait_impl<T(C::*)>
+				: public array_trait_impl < T >
+			{
+				typedef with_custodian_and_ward_postcall <
+				0, // return object (custodian)
+				1  // self or this (ward)
+				> policy;
+
+				// Append the class to the signature.
+				typedef typename boost::mpl::push_back <
+					typename array_trait_impl<T>::signature, C& > ::type signature;
+			};
+
+			/// @brief Trait class used to deduce array information, policies, and 
+			///        signatures
+			template <typename T>
+			struct array_trait :
+				public array_trait_impl < typename boost::remove_pointer<T>::type >
+			{
+				typedef T native_type;
+			};
+
+			/// @brief Functor used used convert an array to an array_proxy for
+			///        non-member objects.
+			template <typename Trait>
+			struct array_proxy_getter
+			{
+			public:
+				typedef typename Trait::native_type native_type;
+				typedef typename Trait::proxy_type proxy_type;
+
+				/// @brief Constructor.
+				array_proxy_getter(native_type array) : array_(array) {}
+
+				/// @brief Return an array_proxy for a member array object.
+				template <typename C>
+				proxy_type operator()(C& c) { return make_array_proxy(c.*array_); }
+
+				/// @brief Return an array_proxy for a non-member array object.
+				proxy_type operator()() { return make_array_proxy(*array_); }
+			private:
+				native_type array_;
+			};
+
+			/// @brief Conditionally register a type with Boost.Python.
+			template <typename Trait>
+			void register_array_proxy()
+			{
+				typedef typename Trait::element_type element_type;
+				typedef typename Trait::proxy_type proxy_type;
+
+				// If type is already registered, then return early.
+				namespace python = boost::python;
+				bool is_registered = (0 != python::converter::registry::query(
+					python::type_id<proxy_type>())->to_python_target_type());
+				if (is_registered) return;
+
+				//// Otherwise, register the type as an internal type.
+				std::string type_name = std::string("_") + typeid(element_type).name();
+				class_<proxy_type>(type_name.c_str(), no_init)
+					.def(ref_index_suite<proxy_type>());
+			}
+
+			/// @brief Create a callable Boost.Python object that will return an
+			///        array_proxy type when called.
+			///
+			/// @note This function will conditionally register array_proxy types
+			///       for conversion within Boost.Python.  The array_proxy will
+			///       extend the life of the object from which it was called.
+			///       For example, if `foo` is an object, and `vars` is an array,
+			///       then the object returned from `foo.vars` will extend the life
+			///       of `foo`.
+			template <typename Array>
+			object make_array_aux(Array array)
+			{
+				typedef array_trait<Array> trait_type;
+				// Register an array proxy.
+				register_array_proxy<trait_type>();
+
+				// Create function.
+				return make_function(
+					array_proxy_getter<trait_type>(array),
+					typename trait_type::policy(),
+					typename trait_type::signature());
+			}
+
+			template <typename Vector>
+			object make_vector_aux(Vector array)
+			{
+				typedef array_trait<Vector> trait_type;
+				// Register an array proxy.
+				register_array_proxy<trait_type>();
+
+				// Create function.
+				return make_function(
+					array_proxy_getter<trait_type>(array),
+					typename trait_type::policy(),
+					typename trait_type::signature());
+			}
+		} // namespace detail
+	}
+}
+
+/// @brief Create a callable Boost.Python object from an array.
+template <typename T>
+boost::python::object make_array(T array)
+{
+	return boost::python::detail::make_array_aux(array);
+}
+
+template <typename T>
+boost::python::object make_vector(T vec)
+{
+	return boost::python::detail::make_vector_aux(vec);
+}
+
 namespace
 {
 
 	using namespace boost::python;
 	using namespace vmd;
 	using namespace pmx;
-
 
 	boost::python::list get_bone_frame_position(VmdBoneFrame& frame)
 	{
@@ -120,6 +477,8 @@ BOOST_PYTHON_MODULE(mmformat)
 			.def("add_bone_frame", &add_bone_frame)
 			.def("save_to_file", &save_vmd_to_file)
 			;
+		//-----------------------------------------------------------------
+
 
 		class_<PmxSetting>("PmxSetting")
 			.add_property("encoding", make_getter(&PmxSetting::encoding), make_setter(&PmxSetting::encoding))
@@ -168,9 +527,9 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("bone_index1", make_getter(&PmxVertexSkinningSDEF::bone_index1), make_setter(&PmxVertexSkinningSDEF::bone_index1))
 			.add_property("bone_index2", make_getter(&PmxVertexSkinningSDEF::bone_index2), make_setter(&PmxVertexSkinningSDEF::bone_index2))
 			.add_property("bone_weight", make_getter(&PmxVertexSkinningSDEF::bone_weight), make_setter(&PmxVertexSkinningSDEF::bone_weight))
-			//.add_property("sdef_c", make_getter(&PmxVertexSkinningSDEF::sdef_c), make_setter(&PmxVertexSkinningSDEF::sdef_c))
-			//.add_property("sdef_r0", make_getter(&PmxVertexSkinningSDEF::sdef_r0), make_setter(&PmxVertexSkinningSDEF::sdef_r0))
-			//.add_property("sdef_r1", make_getter(&PmxVertexSkinningSDEF::sdef_r1), make_setter(&PmxVertexSkinningSDEF::sdef_r1))
+			.add_property("sdef_c", make_array(&PmxVertexSkinningSDEF::sdef_c))
+			.add_property("sdef_r0", make_array(&PmxVertexSkinningSDEF::sdef_r0))
+			.add_property("sdef_r1", make_array(&PmxVertexSkinningSDEF::sdef_r1))
 			;
 
 		class_<PmxVertexSkinningQDEF, bases<PmxVertexSkinning> >("PmxVertexSkinningQDEF")
@@ -185,10 +544,10 @@ BOOST_PYTHON_MODULE(mmformat)
 			;
 
 		class_<PmxVertex>("PmxVertex")
-			//.add_property("positon", make_getter(&PmxVertex::positon), make_setter(&PmxVertex::positon))
-			//.add_property("normal", make_getter(&PmxVertex::normal), make_setter(&PmxVertex::normal))
-			//.add_property("uv", make_getter(&PmxVertex::uv), make_setter(&PmxVertex::uv))
-			//.add_property("uva", make_getter(&PmxVertex::uva), make_setter(&PmxVertex::uva))
+			.add_property("positon", make_array(&PmxVertex::positon))
+			.add_property("normal", make_array(&PmxVertex::normal))
+			.add_property("uv", make_array(&PmxVertex::uv))
+			//.add_property("uva", make_array(&PmxVertex::uva))
 			.add_property("skinning_type", make_getter(&PmxVertex::skinning_type), make_setter(&PmxVertex::skinning_type))
 			.add_property("skinning", make_getter(&PmxVertex::skinning), make_setter(&PmxVertex::skinning))
 			.add_property("edge", make_getter(&PmxVertex::edge), make_setter(&PmxVertex::edge))
@@ -197,12 +556,12 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<PmxMaterial>("PmxMaterial")
 			.add_property("material_name", make_getter(&PmxMaterial::material_name), make_setter(&PmxMaterial::material_name))
 			.add_property("material_english_name", make_getter(&PmxMaterial::material_english_name), make_setter(&PmxMaterial::material_english_name))
-			//.add_property("diffuse", make_getter(&PmxMaterial::diffuse), make_setter(&PmxMaterial::diffuse))
-			//.add_property("specular", make_getter(&PmxMaterial::specular), make_setter(&PmxMaterial::specular))
+			.add_property("diffuse", make_array(&PmxMaterial::diffuse))
+			.add_property("specular", make_array(&PmxMaterial::specular))
 			.add_property("specularity", make_getter(&PmxMaterial::specularlity), make_setter(&PmxMaterial::specularlity))
-			//.add_property("ambient", make_getter(&PmxMaterial::ambient), make_setter(&PmxMaterial::ambient))
-			//.add_property("edge_color", make_getter(&PmxMaterial::edge_color), make_setter(&PmxMaterial::edge_color))
-			//.add_property("edge_size", make_getter(&PmxMaterial::edge_size), make_setter(&PmxMaterial::edge_size))
+			.add_property("ambient", make_array(&PmxMaterial::ambient))
+			.add_property("edge_color", make_array(&PmxMaterial::edge_color))
+			.add_property("edge_size", make_getter(&PmxMaterial::edge_size), make_setter(&PmxMaterial::edge_size))
 			.add_property("diffuse_texture_index", make_getter(&PmxMaterial::diffuse_texture_index), make_setter(&PmxMaterial::diffuse_texture_index))
 			.add_property("sphere_texture_index", make_getter(&PmxMaterial::sphere_texture_index), make_setter(&PmxMaterial::sphere_texture_index))
 			.add_property("sphere_op_mode", make_getter(&PmxMaterial::sphere_op_mode), make_setter(&PmxMaterial::sphere_op_mode))
@@ -215,24 +574,24 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<PmxIkLink>("PmxIkLink")
 			.add_property("link_target", make_getter(&PmxIkLink::link_target), make_setter(&PmxIkLink::link_target))
 			.add_property("angle_lock", make_getter(&PmxIkLink::angle_lock), make_setter(&PmxIkLink::angle_lock))
-			//.add_property("max_radian", make_getter(&PmxIkLink::max_radian), make_setter(&PmxIkLink::max_radian))
-			//.add_property("min_radian", make_getter(&PmxIkLink::min_radian), make_setter(&PmxIkLink::min_radian))
+			.add_property("max_radian", make_array(&PmxIkLink::max_radian))
+			.add_property("min_radian", make_array(&PmxIkLink::min_radian))
 			;
 
 		class_<PmxBone>("PmxBone")
 			.add_property("bone_name", make_getter(&PmxBone::bone_name), make_setter(&PmxBone::bone_name))
 			.add_property("bone_english_name", make_getter(&PmxBone::bone_english_name), make_setter(&PmxBone::bone_english_name))
-			//.add_property("position", make_getter(&PmxBone::position), make_setter(&PmxBone::position))
+			.add_property("position", make_array(&PmxBone::position))
 			.add_property("parent_index", make_getter(&PmxBone::parent_index), make_setter(&PmxBone::parent_index))
 			.add_property("level", make_getter(&PmxBone::level), make_setter(&PmxBone::level))
 			.add_property("bone_flag", make_getter(&PmxBone::bone_flag), make_setter(&PmxBone::bone_flag))
-			//.add_property("offset", make_getter(&PmxBone::offset), make_setter(&PmxBone::offset))
+			.add_property("offset", make_array(&PmxBone::offset))
 			.add_property("target_index", make_getter(&PmxBone::target_index), make_setter(&PmxBone::target_index))
 			.add_property("grant_parent_index", make_getter(&PmxBone::grant_parent_index), make_setter(&PmxBone::grant_parent_index))
 			.add_property("grant_weight", make_getter(&PmxBone::grant_weight), make_setter(&PmxBone::grant_weight))
-			//.add_property("lock_axis_orientation", make_getter(&PmxBone::lock_axis_orientation), make_setter(&PmxBone::lock_axis_orientation))
-			//.add_property("local_axis_x_orientation", make_getter(&PmxBone::local_axis_x_orientation), make_setter(&PmxBone::local_axis_x_orientation))
-			//.add_property("local_axis_y_orientation", make_getter(&PmxBone::local_axis_y_orientation), make_setter(&PmxBone::local_axis_y_orientation))
+			.add_property("lock_axis_orientation", make_array(&PmxBone::lock_axis_orientation))
+			.add_property("local_axis_x_orientation", make_array(&PmxBone::local_axis_x_orientation))
+			.add_property("local_axis_y_orientation", make_array(&PmxBone::local_axis_y_orientation))
 			.add_property("key", make_getter(&PmxBone::key), make_setter(&PmxBone::key))
 			.add_property("ik_target_bone_index", make_getter(&PmxBone::ik_target_bone_index), make_setter(&PmxBone::ik_target_bone_index))
 			.add_property("ik_loop", make_getter(&PmxBone::ik_loop), make_setter(&PmxBone::ik_loop))
@@ -269,32 +628,32 @@ BOOST_PYTHON_MODULE(mmformat)
 
 		class_<PmxMorphVertexOffset, bases<PmxMorphOffset> >("PmxMorphVertexOffset")
 			.add_property("vertex_index", make_getter(&PmxMorphVertexOffset::vertex_index), make_setter(&PmxMorphVertexOffset::vertex_index))
-			//.add_property("position_offset", make_getter(&PmxMorphVertexOffset::position_offset), make_setter(&PmxMorphVertexOffset::position_offset))
+			.add_property("position_offset", make_array(&PmxMorphVertexOffset::position_offset))
 			;
 
 		class_<PmxMorphUVOffset, bases<PmxMorphOffset> >("PmxMorphUVOffset")
 			.add_property("vertex_index", make_getter(&PmxMorphUVOffset::vertex_index), make_setter(&PmxMorphUVOffset::vertex_index))
-			//.add_property("uv_offset", make_getter(&PmxMorphUVOffset::uv_offset), make_setter(&PmxMorphUVOffset::uv_offset))
+			.add_property("uv_offset", make_array(&PmxMorphUVOffset::uv_offset))
 			;
 
 		class_<PmxMorphBoneOffset, bases<PmxMorphOffset> >("PmxMorphBoneOffset")
 			.add_property("bone_index", make_getter(&PmxMorphBoneOffset::bone_index), make_setter(&PmxMorphBoneOffset::bone_index))
-			//.add_property("translation", make_getter(&PmxMorphBoneOffset::translation), make_setter(&PmxMorphBoneOffset::translation))
-			//.add_property("rotation", make_getter(&PmxMorphBoneOffset::rotation), make_setter(&PmxMorphBoneOffset::rotation))
+			.add_property("translation", make_array(&PmxMorphBoneOffset::translation))
+			.add_property("rotation", make_array(&PmxMorphBoneOffset::rotation))
 			;
 
 		class_<PmxMorphMaterialOffset, bases<PmxMorphOffset> >("PmxMorphMaterialOffset")
 			.add_property("material_index", make_getter(&PmxMorphMaterialOffset::material_index), make_setter(&PmxMorphMaterialOffset::material_index))
 			.add_property("offset_operation", make_getter(&PmxMorphMaterialOffset::offset_operation), make_setter(&PmxMorphMaterialOffset::offset_operation))
-			//.add_property("diffuse", make_getter(&PmxMorphMaterialOffset::diffuse), make_setter(&PmxMorphMaterialOffset::diffuse))
-			//.add_property("specular", make_getter(&PmxMorphMaterialOffset::specular), make_setter(&PmxMorphMaterialOffset::specular))
+			.add_property("diffuse", make_array(&PmxMorphMaterialOffset::diffuse))
+			.add_property("specular", make_array(&PmxMorphMaterialOffset::specular))
 			.add_property("specularity", make_getter(&PmxMorphMaterialOffset::specularity), make_setter(&PmxMorphMaterialOffset::specularity))
-			//.add_property("ambient", make_getter(&PmxMorphMaterialOffset::ambient), make_setter(&PmxMorphMaterialOffset::ambient))
-			//.add_property("edge_color", make_getter(&PmxMorphMaterialOffset::edge_color), make_setter(&PmxMorphMaterialOffset::edge_color))
-			//.add_property("edge_size", make_getter(&PmxMorphMaterialOffset::edge_size), make_setter(&PmxMorphMaterialOffset::edge_size))
-			//.add_property("texture_argb", make_getter(&PmxMorphMaterialOffset::texture_argb), make_setter(&PmxMorphMaterialOffset::texture_argb))
-			//.add_property("sphere_texture_argb", make_getter(&PmxMorphMaterialOffset::sphere_texture_argb), make_setter(&PmxMorphMaterialOffset::sphere_texture_argb))
-			//.add_property("toon_texture_argb", make_getter(&PmxMorphMaterialOffset::toon_texture_argb), make_setter(&PmxMorphMaterialOffset::toon_texture_argb))
+			.add_property("ambient", make_array(&PmxMorphMaterialOffset::ambient))
+			.add_property("edge_color", make_array(&PmxMorphMaterialOffset::edge_color))
+			.add_property("edge_size", make_getter(&PmxMorphMaterialOffset::edge_size), make_setter(&PmxMorphMaterialOffset::edge_size))
+			.add_property("texture_argb", make_array(&PmxMorphMaterialOffset::texture_argb))
+			.add_property("sphere_texture_argb", make_array(&PmxMorphMaterialOffset::sphere_texture_argb))
+			.add_property("toon_texture_argb", make_array(&PmxMorphMaterialOffset::toon_texture_argb))
 			;
 
 		class_<PmxMorphGroupOffset, bases<PmxMorphOffset> >("PmxMorphGroupOffset")
@@ -310,8 +669,8 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<PmxMorphImplusOffset, bases<PmxMorphOffset> >("PmxMorphImplusOffset")
 			.add_property("rigid_body_index", make_getter(&PmxMorphImplusOffset::rigid_body_index), make_setter(&PmxMorphImplusOffset::rigid_body_index))
 			.add_property("is_local", make_getter(&PmxMorphImplusOffset::is_local), make_setter(&PmxMorphImplusOffset::is_local))
-			//.add_property("velocity", make_getter(&PmxMorphImplusOffset::velocity), make_setter(&PmxMorphImplusOffset::velocity))
-			//.add_property("angular_torque", make_getter(&PmxMorphImplusOffset::angular_torque), make_setter(&PmxMorphImplusOffset::angular_torque))
+			.add_property("velocity", make_array(&PmxMorphImplusOffset::velocity))
+			.add_property("angular_torque", make_array(&PmxMorphImplusOffset::angular_torque))
 			;
 
 		class_<PmxMorph>("PmxMorph")
@@ -349,9 +708,9 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("group", make_getter(&PmxRigidBody::group), make_setter(&PmxRigidBody::group))
 			.add_property("mask", make_getter(&PmxRigidBody::mask), make_setter(&PmxRigidBody::mask))
 			.add_property("shape", make_getter(&PmxRigidBody::shape), make_setter(&PmxRigidBody::shape))
-			//.add_property("size", make_getter(&PmxRigidBody::size), make_setter(&PmxRigidBody::size))
-			//.add_property("position", make_getter(&PmxRigidBody::position), make_setter(&PmxRigidBody::position))
-			//.add_property("orientation", make_getter(&PmxRigidBody::orientation), make_setter(&PmxRigidBody::orientation))
+			.add_property("size", make_array(&PmxRigidBody::size))
+			.add_property("position", make_array(&PmxRigidBody::position))
+			.add_property("orientation", make_array(&PmxRigidBody::orientation))
 			.add_property("mass", make_getter(&PmxRigidBody::mass), make_setter(&PmxRigidBody::mass))
 			.add_property("move_attenuation", make_getter(&PmxRigidBody::move_attenuation), make_setter(&PmxRigidBody::move_attenuation))
 			.add_property("rotation_attenuation", make_getter(&PmxRigidBody::rotation_attenuation), make_setter(&PmxRigidBody::rotation_attenuation))
@@ -373,14 +732,14 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<PmxJointParam>("PmxJointParam")
 			.add_property("rigid_body1", make_getter(&PmxJointParam::rigid_body1), make_setter(&PmxJointParam::rigid_body1))
 			.add_property("rigid_body2", make_getter(&PmxJointParam::rigid_body2), make_setter(&PmxJointParam::rigid_body2))
-			//.add_property("position", make_getter(&PmxJointParam::position), make_setter(&PmxJointParam::position))
-			//.add_property("orientaiton", make_getter(&PmxJointParam::orientaiton), make_setter(&PmxJointParam::orientaiton))
-			//.add_property("move_limitation_min", make_getter(&PmxJointParam::move_limitation_min), make_setter(&PmxJointParam::move_limitation_min))
-			//.add_property("move_limitation_max", make_getter(&PmxJointParam::move_limitation_max), make_setter(&PmxJointParam::move_limitation_max))
-			//.add_property("rotation_limitation_min", make_getter(&PmxJointParam::rotation_limitation_min), make_setter(&PmxJointParam::rotation_limitation_min))
-			//.add_property("rotation_limitation_max", make_getter(&PmxJointParam::rotation_limitation_max), make_setter(&PmxJointParam::rotation_limitation_max))
-			//.add_property("spring_move_coefficient", make_getter(&PmxJointParam::spring_move_coefficient), make_setter(&PmxJointParam::spring_move_coefficient))
-			//.add_property("spring_rotation_coefficient", make_getter(&PmxJointParam::spring_rotation_coefficient), make_setter(&PmxJointParam::spring_rotation_coefficient))
+			.add_property("position", make_array(&PmxJointParam::position))
+			.add_property("orientaiton", make_array(&PmxJointParam::orientaiton))
+			.add_property("move_limitation_min", make_array(&PmxJointParam::move_limitation_min))
+			.add_property("move_limitation_max", make_array(&PmxJointParam::move_limitation_max))
+			.add_property("rotation_limitation_min", make_array(&PmxJointParam::rotation_limitation_min))
+			.add_property("rotation_limitation_max", make_array(&PmxJointParam::rotation_limitation_max))
+			.add_property("spring_move_coefficient", make_array(&PmxJointParam::spring_move_coefficient))
+			.add_property("spring_rotation_coefficient", make_array(&PmxJointParam::spring_rotation_coefficient))
 			;
 
 		class_<PmxJoint>("PmxJoint")
@@ -413,7 +772,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("model_comment", make_getter(&PmxModel::model_comment), make_setter(&PmxModel::model_comment))
 			.add_property("model_english_commnet", make_getter(&PmxModel::model_english_commnet), make_setter(&PmxModel::model_english_commnet))
 			.add_property("vertex_count", make_getter(&PmxModel::vertex_count), make_setter(&PmxModel::vertex_count))
-			//.add_property("vertices", make_getter(&PmxModel::vertices),  make_setter(&PmxModel::vertices))
+			//.add_property("vertices", make_array(&PmxModel::vertices))
 			.add_property("index_count", make_getter(&PmxModel::index_count), make_setter(&PmxModel::index_count))
 			//.add_property("indices", make_getter(&PmxModel::indices), make_setter(&PmxModel::indices))
 			.add_property("texture_count", make_getter(&PmxModel::texture_count), make_setter(&PmxModel::texture_count))
