@@ -183,6 +183,10 @@ namespace pmx
 			}
 		}
 
+		bool operator == (const PmxVertex &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxVertex)) == 0);
+		}
+
 		/// 位置
 		float positon[3];
 		/// 法線
@@ -224,6 +228,10 @@ namespace pmx
 			for (int i = 0; i < 4; ++i) {
 				diffuse[i] = 0.0f;
 			}
+		}
+
+		bool operator == (const PmxMaterial &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMaterial)) == 0);
 		}
 
 		/// モデル名
@@ -276,6 +284,9 @@ namespace pmx
 			}
 		}
 
+		bool operator == (const PmxIkLink &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxIkLink)) == 0);
+		}
 		/// リンクボーンインデックス
 		int link_target;
 		/// 角度制限
@@ -312,6 +323,10 @@ namespace pmx
 				local_axis_x_orientation[i] = 0.0f;
 				local_axis_y_orientation[i] = 0.0f;
 			}
+		}
+
+		bool operator == (const PmxBone &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxBone)) == 0);
 		}
 
 		/// ボーン名
@@ -397,6 +412,9 @@ namespace pmx
 				position_offset[i] = 0.0f;
 			}
 		}
+		bool operator == (const PmxMorphVertexOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphVertexOffset)) == 0);
+		}
 		int vertex_index;
 		float position_offset[3];
 		void Read(std::istream *stream, PmxSetting *setting) override;
@@ -412,6 +430,9 @@ namespace pmx
 			for (int i = 0; i < 4; ++i) {
 				uv_offset[i] = 0.0f;
 			}
+		}
+		bool operator == (const PmxMorphUVOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphUVOffset)) == 0);
 		}
 		int vertex_index;
 		float uv_offset[4];
@@ -431,6 +452,9 @@ namespace pmx
 			for (int i = 0; i < 4; ++i) {
 				rotation[i] = 0.0f;
 			}
+		}
+		bool operator == (const PmxMorphBoneOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphBoneOffset)) == 0);
 		}
 		int bone_index;
 		float translation[3];
@@ -458,6 +482,9 @@ namespace pmx
 				toon_texture_argb[i] = 0.0f;
 			}
 		}
+		bool operator == (const PmxMorphMaterialOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphMaterialOffset)) == 0);
+		}
 		int material_index;
 		uint8_t offset_operation;
 		float diffuse[4];
@@ -480,6 +507,9 @@ namespace pmx
 			: morph_index(0)
 			, morph_weight(0.0f)
 		{}
+		bool operator == (const PmxMorphGroupOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphGroupOffset)) == 0);
+		}
 		int morph_index;
 		float morph_weight;
 		void Read(std::istream *stream, PmxSetting *setting) override;
@@ -493,6 +523,9 @@ namespace pmx
 			: morph_index(0)
 			, morph_value(0.0f)
 		{}
+		bool operator == (const PmxMorphFlipOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphFlipOffset)) == 0);
+		}
 		int morph_index;
 		float morph_value;
 		void Read(std::istream *stream, PmxSetting *setting) override;
@@ -511,6 +544,10 @@ namespace pmx
 				angular_torque[i] = 0.0f;
 			}
 		}
+		bool operator == (const PmxMorphImplusOffset &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorphImplusOffset)) == 0);
+		}
+
 		int rigid_body_index;
 		uint8_t is_local;
 		float velocity[3];
@@ -527,6 +564,11 @@ namespace pmx
 			: offset_count(0)
 		{
 		}
+
+		bool operator == (const PmxMorph &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxMorph)) == 0);
+		}
+
 		/// モーフ名
 		std::wstring morph_name;
 		/// モーフ英名
@@ -564,6 +606,11 @@ namespace pmx
 			, index(0)
 		{
 		}
+
+		bool operator == (const PmxFrameElement &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxFrameElement)) == 0);
+		}
+
 		/// 要素対象
 		uint8_t element_target;
 		/// 要素対象インデックス
@@ -581,6 +628,11 @@ namespace pmx
 			, element_count(0)
 		{
 		}
+
+		bool operator == (const PmxFrame &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxFrame)) == 0);
+		}
+
 		/// 枠名
 		std::wstring frame_name;
 		/// 枠英名
@@ -616,6 +668,11 @@ namespace pmx
 				orientation[i] = 0.0f;
 			}
 		}
+
+		bool operator == (const PmxRigidBody &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxRigidBody)) == 0);
+		}
+
 		/// 剛体名
 		std::wstring girid_body_name;
 		/// 剛体英名
@@ -690,6 +747,9 @@ namespace pmx
 		std::wstring joint_english_name;
 		PmxJointType joint_type;
 		PmxJointParam param;
+		bool operator == (const PmxJoint &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxJoint)) == 0);
+		}
 		void Read(std::istream *stream, PmxSetting *setting);
 		void Write(std::ostream *stream, PmxSetting *setting);
 	};
@@ -757,6 +817,11 @@ namespace pmx
 			, anchor_count(0)
 			, pin_vertex_count(0)
 		{}
+
+		bool operator == (const PmxSoftBody &v) const {
+			return (std::memcmp(this, &v, sizeof(PmxSoftBody)) == 0);
+		}
+
 		std::wstring soft_body_name;
 		std::wstring soft_body_english_name;
 		uint8_t shape;

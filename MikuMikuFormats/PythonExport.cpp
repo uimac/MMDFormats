@@ -352,22 +352,10 @@ namespace boost {
 					typename trait_type::signature());
 			}
 
-			template <typename Vector>
-			object make_vector_aux(Vector array)
-			{
-				typedef array_trait<Vector> trait_type;
-				// Register an array proxy.
-				register_array_proxy<trait_type>();
-
-				// Create function.
-				return make_function(
-					array_proxy_getter<trait_type>(array),
-					typename trait_type::policy(),
-					typename trait_type::signature());
-			}
 		} // namespace detail
 	}
 }
+
 
 /// @brief Create a callable Boost.Python object from an array.
 template <typename T>
@@ -376,11 +364,6 @@ boost::python::object make_array(T array)
 	return boost::python::detail::make_array_aux(array);
 }
 
-template <typename T>
-boost::python::object make_vector(T vec)
-{
-	return boost::python::detail::make_vector_aux(vec);
-}
 
 namespace
 {
@@ -388,6 +371,13 @@ namespace
 	using namespace boost::python;
 	using namespace vmd;
 	using namespace pmx;
+
+	template <typename T>
+	void make_vector() {
+		class_<std::vector<T>>( (std::string("vec_") + typeid(T).name()).c_str() )
+			.def(vector_indexing_suite<std::vector<T> >())
+			;
+	}
 
 	boost::python::list get_bone_frame_position(VmdBoneFrame& frame)
 	{
@@ -578,6 +568,8 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("min_radian", make_array(&PmxIkLink::min_radian))
 			;
 
+		make_vector<PmxIkLink>();
+
 		class_<PmxBone>("PmxBone")
 			.add_property("bone_name", make_getter(&PmxBone::bone_name), make_setter(&PmxBone::bone_name))
 			.add_property("bone_english_name", make_getter(&PmxBone::bone_english_name), make_setter(&PmxBone::bone_english_name))
@@ -597,7 +589,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("ik_loop", make_getter(&PmxBone::ik_loop), make_setter(&PmxBone::ik_loop))
 			.add_property("ik_loop_angle_limit", make_getter(&PmxBone::ik_loop_angle_limit), make_setter(&PmxBone::ik_loop_angle_limit))
 			.add_property("ik_link_count", make_getter(&PmxBone::ik_link_count), make_setter(&PmxBone::ik_link_count))
-			//.add_property("ik_links", make_getter(&PmxBone::ik_links), make_setter(&PmxBone::ik_links))
+			.add_property("ik_links", make_getter(&PmxBone::ik_links), make_setter(&PmxBone::ik_links))
 			;
 
 		enum_<MorphType>("MorphType")
@@ -673,19 +665,27 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("angular_torque", make_array(&PmxMorphImplusOffset::angular_torque))
 			;
 
+		make_vector<PmxMorphVertexOffset>();
+		make_vector<PmxMorphUVOffset>();
+		make_vector<PmxMorphBoneOffset>();
+		make_vector<PmxMorphMaterialOffset>();
+		make_vector<PmxMorphGroupOffset>();
+		make_vector<PmxMorphFlipOffset>();
+		make_vector<PmxMorphImplusOffset>();
+
 		class_<PmxMorph>("PmxMorph")
 			.add_property("morph_name", make_getter(&PmxMorph::morph_name), make_setter(&PmxMorph::morph_name))
 			.add_property("morph_english_name", make_getter(&PmxMorph::morph_english_name), make_setter(&PmxMorph::morph_english_name))
 			.add_property("category", make_getter(&PmxMorph::category), make_setter(&PmxMorph::category))
 			.add_property("morph_type", make_getter(&PmxMorph::morph_type), make_setter(&PmxMorph::morph_type))
 			.add_property("offset_count", make_getter(&PmxMorph::offset_count), make_setter(&PmxMorph::offset_count))
-			//.add_property("vertex_offsets", make_getter(&PmxMorph::vertex_offsets), make_setter(&PmxMorph::vertex_offsets))
-			//.add_property("uv_offsets", make_getter(&PmxMorph::uv_offsets), make_setter(&PmxMorph::uv_offsets))
-			//.add_property("bone_offsets", make_getter(&PmxMorph::bone_offsets), make_setter(&PmxMorph::bone_offsets))
-			//.add_property("material_offsets", make_getter(&PmxMorph::material_offsets), make_setter(&PmxMorph::material_offsets))
-			//.add_property("group_offsets", make_getter(&PmxMorph::group_offsets), make_setter(&PmxMorph::group_offsets))
-			//.add_property("flip_offsets", make_getter(&PmxMorph::flip_offsets), make_setter(&PmxMorph::flip_offsets))
-			//.add_property("implus_offsets", make_getter(&PmxMorph::implus_offsets), make_setter(&PmxMorph::implus_offsets))
+			.add_property("vertex_offsets", make_getter(&PmxMorph::vertex_offsets), make_setter(&PmxMorph::vertex_offsets))
+			.add_property("uv_offsets", make_getter(&PmxMorph::uv_offsets), make_setter(&PmxMorph::uv_offsets))
+			.add_property("bone_offsets", make_getter(&PmxMorph::bone_offsets), make_setter(&PmxMorph::bone_offsets))
+			.add_property("material_offsets", make_getter(&PmxMorph::material_offsets), make_setter(&PmxMorph::material_offsets))
+			.add_property("group_offsets", make_getter(&PmxMorph::group_offsets), make_setter(&PmxMorph::group_offsets))
+			.add_property("flip_offsets", make_getter(&PmxMorph::flip_offsets), make_setter(&PmxMorph::flip_offsets))
+			.add_property("implus_offsets", make_getter(&PmxMorph::implus_offsets), make_setter(&PmxMorph::implus_offsets))
 			;
 
 		class_<PmxFrameElement>("PmxFrameElement")
@@ -693,12 +693,14 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("index", make_getter(&PmxFrameElement::index), make_setter(&PmxFrameElement::index))
 			;
 
+		make_vector<PmxFrameElement >();
+
 		class_<PmxFrame>("PmxFrame")
 			.add_property("frame_name", make_getter(&PmxFrame::frame_name), make_setter(&PmxFrame::frame_name))
 			.add_property("frame_english_name", make_getter(&PmxFrame::frame_english_name), make_setter(&PmxFrame::frame_english_name))
 			.add_property("frame_flag", make_getter(&PmxFrame::frame_flag), make_setter(&PmxFrame::frame_flag))
 			.add_property("element_count", make_getter(&PmxFrame::element_count), make_setter(&PmxFrame::element_count))
-			//.add_property("elements", make_getter(&PmxFrame::elements), make_setter(&PmxFrame::elements))
+			.add_property("elements", make_getter(&PmxFrame::elements), make_setter(&PmxFrame::elements))
 			;
 
 		class_<PmxRigidBody>("PmxRigidBody")
@@ -763,6 +765,17 @@ BOOST_PYTHON_MODULE(mmformat)
 			;
 
 		class_<PmxSoftBody>("PmxSoftBody");
+		
+		make_vector<PmxVertex>();
+		make_vector<int>();
+		make_vector<std::wstring>();
+		make_vector<PmxMaterial>();
+		make_vector<PmxBone>();
+		make_vector<PmxMorph>();
+		make_vector<PmxFrame>();
+		make_vector<PmxRigidBody>();
+		make_vector<PmxJoint>();
+		make_vector<PmxSoftBody>();
 
 		class_<PmxModel>("PmxModel")
 			.add_property("version", make_getter(&PmxModel::version), make_setter(&PmxModel::version))
@@ -772,25 +785,25 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("model_comment", make_getter(&PmxModel::model_comment), make_setter(&PmxModel::model_comment))
 			.add_property("model_english_commnet", make_getter(&PmxModel::model_english_commnet), make_setter(&PmxModel::model_english_commnet))
 			.add_property("vertex_count", make_getter(&PmxModel::vertex_count), make_setter(&PmxModel::vertex_count))
-			//.add_property("vertices", make_array(&PmxModel::vertices))
+			.add_property("vertices", make_getter(&PmxModel::vertices))
 			.add_property("index_count", make_getter(&PmxModel::index_count), make_setter(&PmxModel::index_count))
-			//.add_property("indices", make_getter(&PmxModel::indices), make_setter(&PmxModel::indices))
+			.add_property("indices", make_getter(&PmxModel::indices))
 			.add_property("texture_count", make_getter(&PmxModel::texture_count), make_setter(&PmxModel::texture_count))
-			//.add_property("textures", make_getter(&PmxModel::textures), make_setter(&PmxModel::textures))
+			.add_property("textures", make_getter(&PmxModel::textures))
 			.add_property("material_count", make_getter(&PmxModel::material_count), make_setter(&PmxModel::material_count))
-			//.add_property("indices", make_getter(&PmxModel::indices), make_setter(&PmxModel::indices))
+			.add_property("materials", make_getter(&PmxModel::materials))
 			.add_property("bone_count", make_getter(&PmxModel::bone_count), make_setter(&PmxModel::bone_count))
-			//.add_property("bones", make_getter(&PmxModel::bones), make_setter(&PmxModel::bones))
+			.add_property("bones", make_getter(&PmxModel::bones))
 			.add_property("morph_count", make_getter(&PmxModel::morph_count), make_setter(&PmxModel::morph_count))
-			//.add_property("morphs", make_getter(&PmxModel::morphs), make_setter(&PmxModel::morphs))
+			.add_property("morphs", make_getter(&PmxModel::morphs))
 			.add_property("frame_count", make_getter(&PmxModel::frame_count), make_setter(&PmxModel::frame_count))
-			//.add_property("frames", make_getter(&PmxModel::frames), make_setter(&PmxModel::frames))
+			.add_property("frames", make_getter(&PmxModel::frames))
 			.add_property("rigid_body_count", make_getter(&PmxModel::rigid_body_count), make_setter(&PmxModel::rigid_body_count))
-			//.add_property("rigid_bodies", make_getter(&PmxModel::rigid_bodies), make_setter(&PmxModel::rigid_bodies))
+			.add_property("rigid_bodies", make_getter(&PmxModel::rigid_bodies))
 			.add_property("joint_count", make_getter(&PmxModel::joint_count), make_setter(&PmxModel::joint_count))
-			//.add_property("joints", make_getter(&PmxModel::joints), make_setter(&PmxModel::joints))
+			.add_property("joints", make_getter(&PmxModel::joints))
 			.add_property("soft_body_count", make_getter(&PmxModel::soft_body_count), make_setter(&PmxModel::soft_body_count))
-			//.add_property("soft_bodies", make_getter(&PmxModel::soft_bodies), make_setter(&PmxModel::soft_bodies))
+			.add_property("soft_bodies", make_getter(&PmxModel::soft_bodies))
 			.def("init", &PmxModel::Init)
 			//.def("save_to_file", &save_pmx_to_file)
 			;
