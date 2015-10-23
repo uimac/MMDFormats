@@ -430,12 +430,21 @@ namespace
 		return motion.SaveToFile(utf16str);
 	}
 
-	//bool save_pmx_to_file(PmxModel& pmx, const char* filepath)
-	//{
-	//	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-	//	std::u16string utf16str = convert.from_bytes(filepath);
-	//	return pmx.SaveToFile(utf16str);
-	//}
+	bool save_pmx_to_file(PmxModel& pmx, const char* filepath)
+	{
+		std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+		std::u16string utf16str = convert.from_bytes(filepath);
+		try {
+			std::ofstream stream(utf16str.c_str(), std::ios::binary);
+			pmx.Write(&stream);
+			stream.close();
+			return true;
+		}
+		catch (...)
+		{
+			return false;
+		}
+	}
 
 	void add_bone_frame(VmdMotion& motion, VmdBoneFrame& bone_frame)
 	{
@@ -460,11 +469,49 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("position", &get_bone_frame_position, &set_bone_frame_position)
 			.add_property("orientation", &get_bone_frame_orientation, &set_bone_frame_orientation)
 			//.add_property("interpolation", make_getter(&VmdBoneFrame::interpolation), make_setter(&VmdBoneFrame::interpolation))
-		;
+			;
+
+		class_<VmdFaceFrame>("VmdFaceFrame")
+			.add_property("face_name", make_getter(&VmdFaceFrame::face_name), make_setter(&VmdFaceFrame::face_name))
+			.add_property("weight", make_getter(&VmdFaceFrame::weight), make_setter(&VmdFaceFrame::weight))
+			.add_property("frame", make_getter(&VmdFaceFrame::frame), make_setter(&VmdFaceFrame::frame))
+			;
+
+		class_<VmdCameraFrame>("VmdCameraFrame")
+			.add_property("frame", make_getter(&VmdCameraFrame::frame), make_setter(&VmdCameraFrame::frame))
+			.add_property("distance", make_getter(&VmdCameraFrame::distance), make_setter(&VmdCameraFrame::distance))
+			.add_property("position", make_array(&VmdCameraFrame::position))
+			.add_property("orientation", make_array(&VmdCameraFrame::orientation))
+			//.add_property("interpolation", make_array(&VmdCameraFrame::interpolation))
+			.add_property("angle", make_getter(&VmdCameraFrame::angle), make_setter(&VmdCameraFrame::angle))
+			.add_property("unknown", make_array(&VmdCameraFrame::unknown))
+			;
+		
+		class_<VmdLightFrame>("VmdLightFrame")
+			.add_property("frame", make_getter(&VmdLightFrame::frame), make_setter(&VmdLightFrame::frame))
+			.add_property("color", make_array(&VmdLightFrame::color))
+			.add_property("position", make_array(&VmdLightFrame::position))
+			;
+
+		class_<VmdIkFrame>("VmdIkFrame")
+			.add_property("frame", make_getter(&VmdIkFrame::frame), make_setter(&VmdIkFrame::frame))
+			.add_property("display", make_getter(&VmdIkFrame::display), make_setter(&VmdIkFrame::display))
+			;
+
+		make_vector<VmdBoneFrame>();
+		make_vector<VmdCameraFrame>();
+		make_vector<VmdFaceFrame>();
+		make_vector<VmdIkFrame>();
 
 		class_<VmdMotion>("VmdMotion")
 			.add_property("model_name", make_getter(&VmdMotion::model_name), make_setter(&VmdMotion::model_name))
-			.def("add_bone_frame", &add_bone_frame)
+			.add_property("version", make_getter(&VmdMotion::version), make_setter(&VmdMotion::version))
+			.add_property("bone_frames", make_getter(&VmdMotion::bone_frames))
+			.add_property("face_frames", make_getter(&VmdMotion::face_frames))
+			.add_property("camera_frames", make_getter(&VmdMotion::camera_frames))
+			.add_property("light_frames", make_getter(&VmdMotion::light_frames))
+			.add_property("ik_frames", make_getter(&VmdMotion::ik_frames))
+			//.def("add_bone_frame", &add_bone_frame)
 			.def("save_to_file", &save_vmd_to_file)
 			;
 		//-----------------------------------------------------------------
@@ -805,7 +852,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("soft_body_count", make_getter(&PmxModel::soft_body_count), make_setter(&PmxModel::soft_body_count))
 			.add_property("soft_bodies", make_getter(&PmxModel::soft_bodies))
 			.def("init", &PmxModel::Init)
-			//.def("save_to_file", &save_pmx_to_file)
+			.def("save_to_file", &save_pmx_to_file)
 			;
 }
 
