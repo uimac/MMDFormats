@@ -1,4 +1,4 @@
-#include <boost/python.hpp>
+﻿#include <boost/python.hpp>
 #include <boost/python/detail/wrap_python.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
@@ -374,7 +374,7 @@ namespace
 
 	template <typename T>
 	void make_vector() {
-		class_<std::vector<T>>( (std::string("vec_") + typeid(T).name()).c_str() )
+		class_<std::vector<T>>((std::string("vec_") + typeid(T).name()).c_str())
 			.def(vector_indexing_suite<std::vector<T> >())
 			;
 	}
@@ -410,6 +410,15 @@ namespace
 		return py_list;
 	}
 
+	void set_morph_name(PmxMorph& morph, const std::wstring& p) {
+		morph.morph_name = p;
+	}
+
+	boost::python::object get_morph_name(PmxMorph& morph) {
+		boost::python::str str(morph.morph_name);
+		return str;
+	}
+
 	void set_bone_frame_orientation(VmdBoneFrame& frame, object p)
 	{
 		const boost::python::tuple tp = extract<tuple>(p)();
@@ -421,6 +430,14 @@ namespace
 		frame.orientation[1] = static_cast<float>(extract<double>(tp[1]));
 		frame.orientation[2] = static_cast<float>(extract<double>(tp[2]));
 		frame.orientation[3] = static_cast<float>(extract<double>(tp[3]));
+	}
+
+	void as_center_bone(PmxBone& bone)
+	{
+		bone.bone_name = std::wstring(L"センター");
+		bone.parent_index = -1;
+		bone.bone_flag = (0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010);
+		bone.offset[1] = 1;
 	}
 
 	bool save_vmd_to_file(VmdMotion& motion, const char* filepath)
@@ -459,6 +476,31 @@ namespace
 			}
 		}
 		motion.bone_frames.push_back(bone_frame);
+	}
+
+	std::shared_ptr<PmxVertexSkinning> to_skinning_bdef1(const PmxVertexSkinningBDEF1& src) {
+		// TODO copy
+		return std::make_shared<PmxVertexSkinningBDEF1>();
+	}
+
+	std::shared_ptr<PmxVertexSkinning> to_skinning_bdef2(const PmxVertexSkinningBDEF2& src) {
+		// TODO copy
+		return std::make_shared<PmxVertexSkinningBDEF2>();
+	}
+
+	std::shared_ptr<PmxVertexSkinning> to_skinning_bdef4(const PmxVertexSkinningBDEF4& src) {
+		// TODO copy
+		return std::make_shared<PmxVertexSkinningBDEF4>();
+	}
+
+	std::shared_ptr<PmxVertexSkinning> to_skinning_sdef(const PmxVertexSkinningSDEF& src) {
+		// TODO copy
+		return std::make_shared<PmxVertexSkinningSDEF>();
+	}
+
+	std::shared_ptr<PmxVertexSkinning> to_skinning_qdef(const PmxVertexSkinningQDEF& src) {
+		// TODO copy
+		return std::make_shared<PmxVertexSkinningQDEF>();
 	}
 
 BOOST_PYTHON_MODULE(mmformat)
@@ -539,14 +581,18 @@ BOOST_PYTHON_MODULE(mmformat)
 
 		class_<PmxVertexSkinning, boost::noncopyable>("PmxVertexSkinning", no_init);
 
+		register_ptr_to_python<std::shared_ptr<PmxVertexSkinning>>();
+
 		class_<PmxVertexSkinningBDEF1, bases<PmxVertexSkinning> >("PmxVertexSkinningBDEF1")
 			.add_property("bone_index", make_getter(&PmxVertexSkinningBDEF1::bone_index), make_setter(&PmxVertexSkinningBDEF1::bone_index))
+			.def("to_skinning", to_skinning_bdef1, (arg("self")))
 			;
 
 		class_<PmxVertexSkinningBDEF2, bases<PmxVertexSkinning> >("PmxVertexSkinningBDEF2")
 			.add_property("bone_index1", make_getter(&PmxVertexSkinningBDEF2::bone_index1), make_setter(&PmxVertexSkinningBDEF2::bone_index1))
 			.add_property("bone_index2", make_getter(&PmxVertexSkinningBDEF2::bone_index2), make_setter(&PmxVertexSkinningBDEF2::bone_index2))
 			.add_property("bone_weight", make_getter(&PmxVertexSkinningBDEF2::bone_weight), make_setter(&PmxVertexSkinningBDEF2::bone_weight))
+			.def("to_skinning", to_skinning_bdef2, (arg("self")))
 			;
 
 		class_<PmxVertexSkinningBDEF4, bases<PmxVertexSkinning> >("PmxVertexSkinningBDEF4")
@@ -558,6 +604,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("bone_weight2", make_getter(&PmxVertexSkinningBDEF4::bone_weight2), make_setter(&PmxVertexSkinningBDEF4::bone_weight2))
 			.add_property("bone_weight3", make_getter(&PmxVertexSkinningBDEF4::bone_weight3), make_setter(&PmxVertexSkinningBDEF4::bone_weight3))
 			.add_property("bone_weight4", make_getter(&PmxVertexSkinningBDEF4::bone_weight4), make_setter(&PmxVertexSkinningBDEF4::bone_weight4))
+			.def("to_skinning", to_skinning_bdef4, (arg("self")))
 			;
 
 		class_<PmxVertexSkinningSDEF, bases<PmxVertexSkinning> >("PmxVertexSkinningSDEF")
@@ -567,6 +614,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("sdef_c", make_array(&PmxVertexSkinningSDEF::sdef_c))
 			.add_property("sdef_r0", make_array(&PmxVertexSkinningSDEF::sdef_r0))
 			.add_property("sdef_r1", make_array(&PmxVertexSkinningSDEF::sdef_r1))
+			.def("to_skinning", to_skinning_sdef, (arg("self")) )
 			;
 
 		class_<PmxVertexSkinningQDEF, bases<PmxVertexSkinning> >("PmxVertexSkinningQDEF")
@@ -578,10 +626,11 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("bone_weight2", make_getter(&PmxVertexSkinningQDEF::bone_weight2), make_setter(&PmxVertexSkinningQDEF::bone_weight2))
 			.add_property("bone_weight3", make_getter(&PmxVertexSkinningQDEF::bone_weight3), make_setter(&PmxVertexSkinningQDEF::bone_weight3))
 			.add_property("bone_weight4", make_getter(&PmxVertexSkinningQDEF::bone_weight4), make_setter(&PmxVertexSkinningQDEF::bone_weight4))
+			.def("to_skinning", to_skinning_qdef, (arg("self")) )
 			;
 
 		class_<PmxVertex>("PmxVertex")
-			.add_property("positon", make_array(&PmxVertex::positon))
+			.add_property("position", make_array(&PmxVertex::position))
 			.add_property("normal", make_array(&PmxVertex::normal))
 			.add_property("uv", make_array(&PmxVertex::uv))
 			//.add_property("uva", make_array(&PmxVertex::uva))
@@ -637,6 +686,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("ik_loop_angle_limit", make_getter(&PmxBone::ik_loop_angle_limit), make_setter(&PmxBone::ik_loop_angle_limit))
 			.add_property("ik_link_count", make_getter(&PmxBone::ik_link_count), make_setter(&PmxBone::ik_link_count))
 			.add_property("ik_links", make_getter(&PmxBone::ik_links), make_setter(&PmxBone::ik_links))
+			.def("as_center_bone", as_center_bone)
 			;
 
 		enum_<MorphType>("MorphType")
@@ -721,7 +771,7 @@ BOOST_PYTHON_MODULE(mmformat)
 		make_vector<PmxMorphImplusOffset>();
 
 		class_<PmxMorph>("PmxMorph")
-			.add_property("morph_name", make_getter(&PmxMorph::morph_name), make_setter(&PmxMorph::morph_name))
+			.add_property("morph_name", get_morph_name, set_morph_name)
 			.add_property("morph_english_name", make_getter(&PmxMorph::morph_english_name), make_setter(&PmxMorph::morph_english_name))
 			.add_property("category", make_getter(&PmxMorph::category), make_setter(&PmxMorph::category))
 			.add_property("morph_type", make_getter(&PmxMorph::morph_type), make_setter(&PmxMorph::morph_type))
