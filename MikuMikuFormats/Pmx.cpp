@@ -697,8 +697,8 @@ namespace pmx
 
 	void PmxRigidBody::Read(std::istream *stream, PmxSetting *setting)
 	{
-		this->girid_body_name = ReadString(stream, setting->encoding);
-		this->girid_body_english_name = ReadString(stream, setting->encoding);
+		this->rigid_body_name = ReadString(stream, setting->encoding);
+		this->rigid_body_english_name = ReadString(stream, setting->encoding);
 		this->target_bone = ReadIndex(stream, setting->bone_index_size);
 		stream->read((char*) &this->group, sizeof(uint8_t));
 		stream->read((char*) &this->mask, sizeof(uint16_t));
@@ -716,8 +716,8 @@ namespace pmx
 
 	void PmxRigidBody::Write(std::ostream *stream, PmxSetting *setting)
 	{
-		WriteString(stream, this->girid_body_name);
-		WriteString(stream, this->girid_body_english_name);
+		WriteString(stream, this->rigid_body_name);
+		WriteString(stream, this->rigid_body_english_name);
 		WriteIndex(stream, this->target_bone, setting->bone_index_size);
 		stream->write((char*)&this->group, sizeof(uint8_t));
 		stream->write((char*)&this->mask, sizeof(uint16_t));

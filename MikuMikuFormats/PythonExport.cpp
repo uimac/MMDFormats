@@ -379,57 +379,116 @@ namespace
 			;
 	}
 
-	boost::python::list get_bone_frame_position(VmdBoneFrame& frame)
-	{
-		boost::python::list py_list;
-		py_list.append(frame.position[0]);
-		py_list.append(frame.position[1]);
-		py_list.append(frame.position[2]);
-		return py_list;
+	boost::python::object get_material_name(PmxMaterial& mat) {
+		return boost::python::str(mat.material_name);
 	}
 
-	void set_bone_frame_position(VmdBoneFrame& frame, object p)
-	{
-		const boost::python::tuple tp = extract<tuple>(p)();
-		if (len(tp) < 3) {
-			PyErr_SetString(PyExc_IndexError, "index out of range");
-			throw boost::python::error_already_set();
-		}
-		frame.position[0] = static_cast<float>(extract<double>(tp[0]));
-		frame.position[1] = static_cast<float>(extract<double>(tp[1]));
-		frame.position[2] = static_cast<float>(extract<double>(tp[2]));
+	boost::python::object get_material_english_name(PmxMaterial& mat) {
+		return boost::python::str(mat.material_english_name);
 	}
 
-	boost::python::list get_bone_frame_orientation(VmdBoneFrame& frame)
-	{
-		boost::python::list py_list;
-		py_list.append(frame.orientation[0]);
-		py_list.append(frame.orientation[1]);
-		py_list.append(frame.orientation[2]);
-		py_list.append(frame.orientation[3]);
-		return py_list;
+	boost::python::object get_bone_name(PmxBone& bone) {
+		return boost::python::str(bone.bone_name);
+	}
+
+	boost::python::object get_bone_english_name(PmxBone& bone) {
+		return boost::python::str(bone.bone_english_name);
+	}
+
+	boost::python::object get_morph_name(PmxMorph& morph) {
+		return boost::python::str(morph.morph_name);
+	}
+
+	boost::python::object get_morph_english_name(PmxMorph& morph) {
+		return boost::python::str(morph.morph_english_name);
+	}
+
+	boost::python::object get_frame_name(PmxFrame& frame) {
+		return boost::python::str(frame.frame_name);
+	}
+
+	boost::python::object get_frame_english_name(PmxFrame& frame) {
+		return boost::python::str(frame.frame_english_name);
+	}
+
+	boost::python::object get_rigid_body_name(PmxRigidBody& rigid_body) {
+		return boost::python::str(rigid_body.rigid_body_name);
+	}
+
+	boost::python::object get_rigid_body_english_name(PmxRigidBody& rigid_body) {
+		return boost::python::str(rigid_body.rigid_body_english_name);
+	}
+
+	boost::python::object get_joint_name(PmxJoint& joint) {
+		return boost::python::str(joint.joint_name);
+	}
+
+	boost::python::object get_joint_english_name(PmxJoint& joint) {
+		return boost::python::str(joint.joint_english_name);
+	}
+
+	boost::python::object get_model_name(PmxModel& model) {
+		return boost::python::str(model.model_name);
+	}
+
+	boost::python::object get_model_english_name(PmxModel& model) {
+		return boost::python::str(model.model_english_name);
+	}
+
+	void set_material_name(PmxMaterial& mat, const std::wstring& p) {
+		mat.material_name = p;
+	}
+
+	void set_material_english_name(PmxMaterial& mat, const std::wstring& p) {
+		mat.material_english_name = p;
+	}
+
+	void set_bone_name(PmxBone& bone, const std::wstring& p) {
+		bone.bone_name = p;
+	}
+
+	void set_bone_english_name(PmxBone& bone, const std::wstring& p) {
+		bone.bone_english_name = p;
 	}
 
 	void set_morph_name(PmxMorph& morph, const std::wstring& p) {
 		morph.morph_name = p;
 	}
 
-	boost::python::object get_morph_name(PmxMorph& morph) {
-		boost::python::str str(morph.morph_name);
-		return str;
+	void set_morph_english_name(PmxMorph& morph, const std::wstring& p) {
+		morph.morph_english_name = p;
 	}
 
-	void set_bone_frame_orientation(VmdBoneFrame& frame, object p)
-	{
-		const boost::python::tuple tp = extract<tuple>(p)();
-		if (len(tp) < 3) {
-			PyErr_SetString(PyExc_IndexError, "index out of range");
-			throw boost::python::error_already_set();
-		}
-		frame.orientation[0] = static_cast<float>(extract<double>(tp[0]));
-		frame.orientation[1] = static_cast<float>(extract<double>(tp[1]));
-		frame.orientation[2] = static_cast<float>(extract<double>(tp[2]));
-		frame.orientation[3] = static_cast<float>(extract<double>(tp[3]));
+	void set_frame_name(PmxFrame& frame, const std::wstring& p) {
+		frame.frame_name = p;
+	}
+
+	void set_frame_english_name(PmxFrame& frame, const std::wstring& p) {
+		frame.frame_english_name = p;
+	}
+
+	void set_rigid_body_name(PmxRigidBody& rigid_body, const std::wstring& p) {
+		rigid_body.rigid_body_name = p;
+	}
+
+	void set_rigid_body_english_name(PmxRigidBody& rigid_body, const std::wstring& p) {
+		rigid_body.rigid_body_english_name = p;
+	}
+
+	void set_joint_name(PmxJoint& joint, const std::wstring& p) {
+		joint.joint_name = p;
+	}
+
+	void set_joint_english_name(PmxJoint& joint, const std::wstring& p) {
+		joint.joint_english_name = p;
+	}
+
+	void set_model_name(PmxModel& model, const std::wstring& p) {
+		model.model_name = p;
+	}
+
+	void set_model_english_name(PmxModel& model, const std::wstring& p) {
+		model.model_english_name = p;
 	}
 
 	void as_center_bone(PmxBone& bone)
@@ -508,8 +567,8 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<VmdBoneFrame>("VmdBoneFrame")
 			.add_property("name", make_getter(&VmdBoneFrame::name), make_setter(&VmdBoneFrame::name))
 			.add_property("frame", make_getter(&VmdBoneFrame::frame), make_setter(&VmdBoneFrame::frame))
-			.add_property("position", &get_bone_frame_position, &set_bone_frame_position)
-			.add_property("orientation", &get_bone_frame_orientation, &set_bone_frame_orientation)
+			.add_property("position", make_array(&VmdBoneFrame::position))
+			.add_property("orientation", make_array(&VmdBoneFrame::orientation))
 			//.add_property("interpolation", make_getter(&VmdBoneFrame::interpolation), make_setter(&VmdBoneFrame::interpolation))
 			;
 
@@ -535,9 +594,15 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("position", make_array(&VmdLightFrame::position))
 			;
 
+		class_<VmdIkEnable>("VmdIkEnable")
+			.add_property("ik_name", make_getter(&VmdIkEnable::ik_name), make_setter(&VmdIkEnable::ik_name))
+			.add_property("enable", make_getter(&VmdIkEnable::enable), make_setter(&VmdIkEnable::enable))
+			;
+
 		class_<VmdIkFrame>("VmdIkFrame")
 			.add_property("frame", make_getter(&VmdIkFrame::frame), make_setter(&VmdIkFrame::frame))
 			.add_property("display", make_getter(&VmdIkFrame::display), make_setter(&VmdIkFrame::display))
+			.add_property("ik_enable", make_getter(&VmdIkFrame::ik_enable), make_setter(&VmdIkFrame::ik_enable))
 			;
 
 		make_vector<VmdBoneFrame>();
@@ -640,8 +705,8 @@ BOOST_PYTHON_MODULE(mmformat)
 			;
 
 		class_<PmxMaterial>("PmxMaterial")
-			.add_property("material_name", make_getter(&PmxMaterial::material_name), make_setter(&PmxMaterial::material_name))
-			.add_property("material_english_name", make_getter(&PmxMaterial::material_english_name), make_setter(&PmxMaterial::material_english_name))
+			.add_property("material_name", get_material_name, set_material_name)
+			.add_property("material_english_name", get_material_english_name, set_material_english_name)
 			.add_property("diffuse", make_array(&PmxMaterial::diffuse))
 			.add_property("specular", make_array(&PmxMaterial::specular))
 			.add_property("specularity", make_getter(&PmxMaterial::specularlity), make_setter(&PmxMaterial::specularlity))
@@ -667,8 +732,8 @@ BOOST_PYTHON_MODULE(mmformat)
 		make_vector<PmxIkLink>();
 
 		class_<PmxBone>("PmxBone")
-			.add_property("bone_name", make_getter(&PmxBone::bone_name), make_setter(&PmxBone::bone_name))
-			.add_property("bone_english_name", make_getter(&PmxBone::bone_english_name), make_setter(&PmxBone::bone_english_name))
+			.add_property("bone_name", get_bone_name, set_bone_name)
+			.add_property("bone_english_name", get_bone_english_name, set_bone_english_name)
 			.add_property("position", make_array(&PmxBone::position))
 			.add_property("parent_index", make_getter(&PmxBone::parent_index), make_setter(&PmxBone::parent_index))
 			.add_property("level", make_getter(&PmxBone::level), make_setter(&PmxBone::level))
@@ -772,7 +837,7 @@ BOOST_PYTHON_MODULE(mmformat)
 
 		class_<PmxMorph>("PmxMorph")
 			.add_property("morph_name", get_morph_name, set_morph_name)
-			.add_property("morph_english_name", make_getter(&PmxMorph::morph_english_name), make_setter(&PmxMorph::morph_english_name))
+			.add_property("morph_english_name", get_morph_english_name, set_morph_english_name)
 			.add_property("category", make_getter(&PmxMorph::category), make_setter(&PmxMorph::category))
 			.add_property("morph_type", make_getter(&PmxMorph::morph_type), make_setter(&PmxMorph::morph_type))
 			.add_property("offset_count", make_getter(&PmxMorph::offset_count), make_setter(&PmxMorph::offset_count))
@@ -793,16 +858,16 @@ BOOST_PYTHON_MODULE(mmformat)
 		make_vector<PmxFrameElement >();
 
 		class_<PmxFrame>("PmxFrame")
-			.add_property("frame_name", make_getter(&PmxFrame::frame_name), make_setter(&PmxFrame::frame_name))
-			.add_property("frame_english_name", make_getter(&PmxFrame::frame_english_name), make_setter(&PmxFrame::frame_english_name))
+			.add_property("frame_name", get_frame_name, set_frame_name)
+			.add_property("frame_english_name", get_frame_english_name, set_frame_english_name)
 			.add_property("frame_flag", make_getter(&PmxFrame::frame_flag), make_setter(&PmxFrame::frame_flag))
 			.add_property("element_count", make_getter(&PmxFrame::element_count), make_setter(&PmxFrame::element_count))
 			.add_property("elements", make_getter(&PmxFrame::elements), make_setter(&PmxFrame::elements))
 			;
 
 		class_<PmxRigidBody>("PmxRigidBody")
-			.add_property("girid_body_name", make_getter(&PmxRigidBody::girid_body_name), make_setter(&PmxRigidBody::girid_body_name))
-			.add_property("girid_body_english_name", make_getter(&PmxRigidBody::girid_body_english_name), make_setter(&PmxRigidBody::girid_body_english_name))
+			.add_property("rigid_body_name", get_rigid_body_name, set_rigid_body_name)
+			.add_property("rigid_body_english_name", get_rigid_body_english_name, set_rigid_body_english_name)
 			.add_property("target_bone", make_getter(&PmxRigidBody::target_bone), make_setter(&PmxRigidBody::target_bone))
 			.add_property("group", make_getter(&PmxRigidBody::group), make_setter(&PmxRigidBody::group))
 			.add_property("mask", make_getter(&PmxRigidBody::mask), make_setter(&PmxRigidBody::mask))
@@ -842,8 +907,8 @@ BOOST_PYTHON_MODULE(mmformat)
 			;
 
 		class_<PmxJoint>("PmxJoint")
-			.add_property("joint_name", make_getter(&PmxJoint::joint_name), make_setter(&PmxJoint::joint_name))
-			.add_property("joint_english_name", make_getter(&PmxJoint::joint_english_name), make_setter(&PmxJoint::joint_english_name))
+			.add_property("joint_name", get_joint_name, set_joint_name)
+			.add_property("joint_english_name", get_joint_english_name, set_joint_english_name)
 			.add_property("joint_type", make_getter(&PmxJoint::joint_type), make_setter(&PmxJoint::joint_type))
 			.add_property("param", make_getter(&PmxJoint::param), make_setter(&PmxJoint::param))
 			;
@@ -877,8 +942,8 @@ BOOST_PYTHON_MODULE(mmformat)
 		class_<PmxModel>("PmxModel")
 			.add_property("version", make_getter(&PmxModel::version), make_setter(&PmxModel::version))
 			.add_property("setting", make_getter(&PmxModel::setting), make_setter(&PmxModel::setting))
-			.add_property("model_name", make_getter(&PmxModel::model_name), make_setter(&PmxModel::model_name))
-			.add_property("model_english_name", make_getter(&PmxModel::model_english_name), make_setter(&PmxModel::model_english_name))
+			.add_property("model_name", get_model_name, set_model_name)
+			.add_property("model_english_name", get_model_english_name, set_model_english_name)
 			.add_property("model_comment", make_getter(&PmxModel::model_comment), make_setter(&PmxModel::model_comment))
 			.add_property("model_english_commnet", make_getter(&PmxModel::model_english_commnet), make_setter(&PmxModel::model_english_commnet))
 			.add_property("vertex_count", make_getter(&PmxModel::vertex_count), make_setter(&PmxModel::vertex_count))

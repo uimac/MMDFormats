@@ -674,9 +674,9 @@ namespace pmx
 		}
 
 		/// 剛体名
-		std::wstring girid_body_name;
+		std::wstring rigid_body_name;
 		/// 剛体英名
-		std::wstring girid_body_english_name;
+		std::wstring rigid_body_english_name;
 		/// 関連ボーンインデックス
 		int target_bone;
 		/// グループ
