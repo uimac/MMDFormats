@@ -522,6 +522,22 @@ namespace
 		}
 	}
 
+	bool load_pmx_from_file(PmxModel& pmx,  const char* filepath)
+	{
+		std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+		std::u16string utf16str = convert.from_bytes(filepath);
+		try {
+			std::ifstream stream(utf16str.c_str(), std::ios::binary);
+			pmx.Read(&stream);
+			stream.close();
+			return true;
+		}
+		catch (...)
+		{
+			return false;
+		}
+	}
+
 	void add_bone_frame(VmdMotion& motion, VmdBoneFrame& bone_frame)
 	{
 		for (int n = 0; n < 4; ++n) {
@@ -968,6 +984,7 @@ BOOST_PYTHON_MODULE(mmformat)
 			.add_property("soft_bodies", make_getter(&PmxModel::soft_bodies))
 			.def("init", &PmxModel::Init)
 			.def("save_to_file", &save_pmx_to_file)
+			.def("load_pmx_from_file", &load_pmx_from_file)
 			;
 }
 
